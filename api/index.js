@@ -1,5 +1,6 @@
 const React = require("react");
 const { renderToString } = require("react-dom/server");
+const { convert } = require("convert-svg-to-png");
 const Avatar = require("boring-avatars").default;
 
 const DEFAULT_COLORS = [
@@ -21,6 +22,8 @@ const VALID_VARIANTS = new Set([
   "bauhaus",
 ]);
 
+const VALID_FORMATS = new Set(["svg", "png"]);
+
 function normalizeColors(colors) {
   const colorPalette = colors.split(",");
 
@@ -40,6 +43,7 @@ app.get("/favicon.ico", (req, res) => {
 app.get("/:variant?/:size?/:name?", (req, res) => {
   const { variant = DEFAULT_VARIANT, size = DEFAULT_SIZE } = req.params;
   const explicitName = req.query.name || req.params.name;
+  const format = req.query.format || "svg";
   const name = explicitName || Math.random().toString();
   const colors = normalizeColors(req.query.colors || DEFAULT_COLORS);
   const square = req.query.hasOwnProperty("square");
@@ -48,7 +52,9 @@ app.get("/:variant?/:size?/:name?", (req, res) => {
     return res.status(400).send("Invalid variant");
   }
 
-  res.setHeader("Content-Type", "image/svg+xml");
+  if (!VALID_FORMATS.has(format)) {
+    return res.status(400).send("Invalid format");
+  }
 
   if (explicitName) {
     res.setHeader("Cache-Control", "max-age=0, s-maxage=2592000");
@@ -70,7 +76,22 @@ app.get("/:variant?/:size?/:name?", (req, res) => {
     )
   );
 
-  res.end(svg);
+  if (format === "svg") {
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.end(svg);
+  } else if (format === "png") {
+    res.set("Content-Type", "image/png");
+    convert(svg)
+      .then((png) => {
+        res.send(png);
+        return res;
+      })
+      .catch(() => {
+        return res.status(400).send("Conversion failed");
+      });
+  } else {
+    return res.status(400).send("Invalid format");
+  }
 });
 
 const port = process.env.PORT || 3000;
