@@ -71,3 +71,7 @@ https://source.boringavatars.com/
 ### Image format
 
 By default API will return image in `svg` format. You can change that behavior by adding `format` query parameter (`?format=png`). Currently `png` is only available alternative.
+
+```
+https://source.boringavatars.com/marble/120?format=png
+```
